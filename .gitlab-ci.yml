@@ -1,0 +1,42 @@
+stages:
+  - build
+  - deploy
+
+variables:
+  REGISTRY: registry.cn-hangzhou.aliyuncs.com
+  REPO: kxq
+  PORT: 7001
+  
+
+build-master:
+  stage: build
+  before_script:
+    - whoami
+    - hostname
+    - docker login --username $USERNAME --password $USERPASSWD $REGISTRY
+    - CONTAINER_NAME=`echo $CI_PROJECT_NAME | tr 'A-Z' 'a-z'| tr '_' '-'`
+    - TAG=`expr substr $CI_COMMIT_SHA 1 8`
+  script:
+    - docker build -t $REGISTRY/$REPO/$CONTAINER_NAME:$TAG .
+    - docker push $REGISTRY/$REPO/$CONTAINER_NAME:$TAG 
+  tags: 
+    - dockerkk
+  only: 
+    - master
+  when: on_success
+
+deploy_master:
+  stage: deploy
+  before_script:
+    - CONTAINER_NAME=`echo $CI_PROJECT_NAME | tr 'A-Z' 'a-z'| tr '_' '-'`
+    - TAG=`expr substr $CI_COMMIT_SHA 1 8`
+  script:
+    - echo $REGISTRY/$REPO/$CONTAINER_NAME:$TAG
+    - bash ~/scripts/150.sh $CONTAINER_NAME $PORT 80 $REGISTRY/$REPO/$CONTAINER_NAME:$TAG root 192.168.10.150
+  tags:
+    - shell
+    
+  only:
+    - master
+  when: on_success
+
